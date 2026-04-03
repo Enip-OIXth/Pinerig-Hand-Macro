@@ -1,0 +1,24 @@
+schema_version = "1.0.0"
+
+id = "enipoixth.pinerig_hand_macro"
+version = "0.1.1"
+name = "Pinerig Hand Macro"
+tagline = "Generate a hand macro bone and action constraints for FK finger on any rig."
+maintainer = "Enip-OIXth"
+type = "add-on"
+
+blender_version_min = "4.2.0"
+license = ["GPL-3.0-or-later"]
+
+# Optional but recommended
+website = "https://github.com/EnipOIXth"
+tags = ["Rigging", "Animation", "Tools"]
+
+# [build]
+#paths = []
+paths_exclude_pattern = [
+   "__pycache__/",
+   "/.git/",
+   "/*.zip",
+   "__dev__",
+]
