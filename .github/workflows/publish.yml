@@ -1,0 +1,26 @@
+name: Publish Blender Extension
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Create ZIP
+        run: |
+          zip -r pinerig_hand_macro.zip . -x "*.git*"
+
+      - name: Upload to Blender Extensions
+        run: |
+          curl -X POST \
+            https://extensions.blender.org/api/v1/extensions/enipoixth.pinerig_hand_macro/versions/upload \
+            -H "Authorization:bearer ${{ secrets.BLENDER_EXTENSIONS_TOKEN }}" \
+            -F "version_file=@pinerig_hand_macro.zip" \
+            -F "release_notes=Automated release from GitHub tag ${{ github.ref_name }}"

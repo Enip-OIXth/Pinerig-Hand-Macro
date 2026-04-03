@@ -1,6 +1,6 @@
 schema_version = "1.0.0"
 
-id = "enipoixth.pinerig_hand_macro"
+id = "pinerig_hand_macro"
 version = "0.1.1"
 name = "Pinerig Hand Macro"
 tagline = "Generate a hand macro bone and action constraints for FK finger on any rig."
