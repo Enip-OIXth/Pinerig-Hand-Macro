@@ -8,7 +8,7 @@ from bpy.types import Operator, Object
 from bpy.props import EnumProperty, IntProperty, BoolProperty
 
 from . import HandMacroHand, HandMacroFinger, get_hand_macro_system, validate_bone_references
-from .utils import detect_hand_side, find_fk_finger_controls, generate_hand_macro, build_finger_chain
+from .utils import detect_bone_side, find_fk_finger_controls, generate_hand_macro, build_finger_chain
 from ..utils.naming import change_name_side, Side
 from ..utils.bones import get_bone
 
@@ -39,6 +39,7 @@ def clamp_active_index(collection, active_index_attr: str, container=None):
 # Hand Operators
 # ----------------------------------------------------------------------
 
+
 class HAND_MACRO_OT_add_hand(Operator):
     bl_idname = "hand_macro.add_hand"
     bl_label = "Add Hand"
@@ -48,20 +49,25 @@ class HAND_MACRO_OT_add_hand(Operator):
     def execute(self, context):
         arm_data = context.active_object.data
         system = get_hand_macro_system(arm_data)
+        idx = len(system.hands)
+        pb = context.active_pose_bone
+
         if not system:
             self.report({'WARNING'}, "No Hand Macro System found")
             return {'CANCELLED'}
 
         hand = system.hands.add()
-        hand.name = "New Hand"
+        hand.name = f"Hand_{idx}"
         
         # Set the newly added hand as active
-        system.active_hand_index = len(system.hands) - 1
+        system.active_hand_index = idx - 1
 
-        # Auto-assign current active bone if possible
-        if context.active_pose_bone:
-            hand.bone = context.active_pose_bone.name
-            hand.name = hand.bone
+        if pb:
+            side = detect_bone_side(pb.name)
+            hand.name = f"{hand.name}.{side}"
+            hand.bone = pb.name
+            hand.side = side
+
         return {'FINISHED'}
 
 
@@ -246,6 +252,32 @@ class HAND_MACRO_OT_assign_phalanx_bone(Operator):
         return {'FINISHED'}
 
 
+class HAND_MACRO_OT_assign_hand_bone(Operator):
+    bl_idname = "hand_macro.assign_hand_bone"
+    bl_label = "Assign Active Bone"
+    bl_description = "Assign currently active pose bone to the selected hand"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    hand_index: IntProperty(default=-1, min=-1)
+
+    def execute(self, context):
+        pb = context.active_pose_bone
+        if not pb:
+            self.report({'WARNING'}, "No active pose bone selected")
+            return {'CANCELLED'}
+
+        arm_data = context.active_object.data
+        system = get_hand_macro_system(arm_data)
+        hand = system.get_active_hand()
+
+        if not hand:
+            return {'CANCELLED'}
+
+        hand.bone = pb.name
+
+        self.report({'INFO'}, f"Assigned '{pb.name}' → {hand.name}")
+        return {'FINISHED'}
+
 ###--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------###
 
 
@@ -276,7 +308,7 @@ class HAND_MACRO_OT_detect(Operator):
             return {'CANCELLED'}
 
         # Detect side
-        side = detect_hand_side(hand_pb.name)
+        side = detect_bone_side(hand_pb.name)
         hand.side = side
 
         detected = find_fk_finger_controls(arm, hand_pb.name, side)
@@ -370,7 +402,7 @@ class HAND_MACRO_OT_generate(Operator):
 
     def _generate_single_hand(self, arm_obj: Object, hand: HandMacroHand, use_shared_actions: bool) -> str:
         """Generate for exactly one hand. Actions may be shared or side-specific."""
-        side = hand.side if hand.side != 'NONE' else detect_hand_side(hand.bone)
+        side = hand.side if hand.side != 'NONE' else detect_bone_side(hand.bone)
 
         # Build finger chains for this hand
         finger_chains = build_finger_chain(hand)
@@ -583,6 +615,7 @@ classes = (
     HAND_MACRO_OT_add_phalanx,
     HAND_MACRO_OT_remove_phalanx,
     HAND_MACRO_OT_assign_phalanx_bone,
+    HAND_MACRO_OT_assign_hand_bone,
     HAND_MACRO_OT_detect,
     HAND_MACRO_OT_generate,
     HAND_MACRO_OT_delete_macro,

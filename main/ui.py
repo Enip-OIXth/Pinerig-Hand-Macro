@@ -38,9 +38,7 @@ def draw_hand_root(context: Context, layout: UILayout, hand: "HandMacroHand"):
     row.alert = False  # reset alert so it doesn't affect the whole row
 
     # Assign button (you can make a dedicated operator later if wanted)
-    op = row.operator("hand_macro.assign_phalanx_bone", text="", icon='EYEDROPPER')
-    op.finger_index = -1   # special value meaning "assign to hand root"
-    op.phalanx_index = -1
+    op = row.operator("hand_macro.assign_hand_bone", text="", icon='EYEDROPPER')
 
     # Side and Flexion Axis
     sub = box.column()

@@ -239,7 +239,7 @@ def resolve_hand_root(obj: Armature, selected_name: str) -> str:
     Works for ARP, Rigify, and custom rigs.
     Extremely tolerant of name changes in side separators, case, hyphens/underscores, and extra suffixes.
     """
-    side = detect_hand_side(selected_name)
+    side = detect_bone_side(selected_name)
     if not side:
         return selected_name  # no side info → can't redirect reliably
 
@@ -286,7 +286,7 @@ def resolve_hand_root(obj: Armature, selected_name: str) -> str:
     return selected_name
 
 
-def detect_hand_side(hand_name: str) -> str:
+def detect_bone_side(hand_name: str) -> str:
     """
     Infer 'L', 'R', or '' from the hand bone name.
 
@@ -302,7 +302,7 @@ def detect_hand_side(hand_name: str) -> str:
     name_lower = hand_name.lower()
     if 'left'  in name_lower: return 'L'
     if 'right' in name_lower: return 'R'
-    return ''
+    return 'NONE'
 
 
 def get_macro_bone_name(hand: str, side: str = '') -> str:
@@ -313,7 +313,7 @@ def get_macro_bone_name(hand: str, side: str = '') -> str:
     Uses naming.change_name_side to produce the suffix in the standard
     convention (.L / .R), consistent with how the rest of the rig is named.
     """
-    s = side or detect_hand_side(hand)
+    s = side or detect_bone_side(hand)
     if s == 'L': return change_name_side(MACRO_NAME, Side.LEFT)
     if s == 'R': return change_name_side(MACRO_NAME, Side.RIGHT)
     return MACRO_NAME
@@ -734,7 +734,7 @@ def find_fk_finger_controls(arm_obj: Armature, hand: str, side: str = '') -> dic
     # Spatial fallback for unclassified bones
     unclassified_roots = _finger_chain_roots(unclassified)
     if unclassified_roots:
-        _spatial_finger_fallback(unclassified_roots, fingers, side or detect_hand_side(hand))
+        _spatial_finger_fallback(unclassified_roots, fingers, side or detect_bone_side(hand))
 
     return fingers
 
@@ -949,7 +949,7 @@ def generate_hand_macro(
     Actions are shared only if use_shared_actions=True.
     """
 
-    side = side or detect_hand_side(hand_root_bone)
+    side = side or detect_bone_side(hand_root_bone)
 
     # Create macro bone for this hand
     macro_name = create_macro_bone(arm_obj, hand_root_bone, side)
