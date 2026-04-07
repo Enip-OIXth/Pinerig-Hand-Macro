@@ -26,8 +26,8 @@
 bl_info = {
     "name": "Pinerig Hand Macro",
     "author": "EnipOIXth",
-    "version": (0, 1, 1), # Addon version.
-    "blender": (4, 1, 0), # Minimum supported Blender version.
+    "version": (1, 0, 0), # Addon version.
+    "blender": (4, 2, 0), # Minimum supported Blender version.
     "description": "Generate a hand macro bone and action constraints for FK finger rigs",
     "category": "Rigging",
     "location": "View3D > Sidebar > Hand Macro",
