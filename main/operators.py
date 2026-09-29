@@ -382,20 +382,48 @@ class HAND_MACRO_OT_generate(Operator):
             return {'CANCELLED'}
         
         # Determine if we should use shared actions
-        use_shared_actions: bool = active_hand.is_paired and active_hand.paired_hand_index != -1 and active_hand.paired_hand_index != system.active_hand_index
+        use_shared_actions: bool = (
+            active_hand.is_paired 
+            and active_hand.paired_hand_index != -1 
+            and active_hand.paired_hand_index != system.active_hand_index
+        )
 
-        # === Branching logic here ===
-        if use_shared_actions:
-            paired_hand = system.hands[active_hand.paired_hand_index]
-            self.report({'INFO'}, f"Generating paired hands with shared actions: {active_hand.name} <-> {paired_hand.name}")
-            
-            macro1 = self._generate_single_hand(arm_obj, active_hand, use_shared_actions=True)
-            macro2 = self._generate_single_hand(arm_obj, paired_hand, use_shared_actions=True)
-            
-            self.report({'INFO'}, f"Generated paired macros: {macro1} + {macro2} (shared actions)")
-        else:
-            macro = self._generate_single_hand(arm_obj, active_hand, use_shared_actions=False)
-            self.report({'INFO'}, f"Hand macro '{macro}' generated")
+
+        # Find a VIEW_3D area so that bpy.ops.object.mode_set and any other
+        # viewport operators have a valid poll context for the entire generation.
+        override_area = None
+        override_region = None
+        for window in context.window_manager.windows:
+            for area in window.screen.areas:
+                if area.type == 'VIEW_3D':
+                    override_area = area
+                    override_region = next(
+                        (r for r in area.regions if r.type == 'WINDOW'), None
+                    )
+                    break
+            if override_area:
+                break
+
+        if not override_area:
+            self.report({'ERROR'}, "No 3D Viewport found. Open a viewport and try again.")
+            return {'CANCELLED'}
+
+        # Apply the override once for the entire operation — all bpy.ops calls
+        # inside generate, including mode_set, will inherit this context.
+        with context.temp_override(area=override_area, region=override_region, active_object=arm_obj, object=arm_obj,):
+
+            # === Branching logic here ===
+            if use_shared_actions:
+                paired_hand = system.hands[active_hand.paired_hand_index]
+                self.report({'INFO'}, f"Generating paired hands with shared actions: {active_hand.name} <-> {paired_hand.name}")
+                
+                macro1 = self._generate_single_hand(arm_obj, active_hand, use_shared_actions=True)
+                macro2 = self._generate_single_hand(arm_obj, paired_hand, use_shared_actions=True)
+                
+                self.report({'INFO'}, f"Generated paired macros: {macro1} + {macro2} (shared actions)")
+            else:
+                macro = self._generate_single_hand(arm_obj, active_hand, use_shared_actions=False)
+                self.report({'INFO'}, f"Hand macro '{macro}' generated")
 
         return {'FINISHED'}
 

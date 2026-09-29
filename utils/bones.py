@@ -525,11 +525,14 @@ def copy_bone_color(obj: ArmatureObject, from_bone: str, to_bone: str):
  
     # Bone color
     pb_2.bone.color.palette = pb_1.bone.color.palette
-
-    # Custom palette
+    #pb_2.bone.color.custom = pb_1.bone.color.custom
     pb_2.bone.color.custom.normal = pb_1.bone.color.custom.normal
     pb_2.bone.color.custom.select = pb_1.bone.color.custom.select
     pb_2.bone.color.custom.active = pb_1.bone.color.custom.active
 
     # Pose color
     pb_2.color.palette = pb_1.color.palette
+    #pb_2.color.custom = pb_1.color.custom
+    pb_2.color.custom.normal = pb_1.color.custom.normal
+    pb_2.color.custom.select = pb_1.color.custom.select
+    pb_2.color.custom.active = pb_1.color.custom.active

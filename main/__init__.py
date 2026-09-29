@@ -207,8 +207,9 @@ REGISTERED_PROPS: List[Tuple[Type, str, Callable[..., Any], Dict[str, Any]]] = [
 
     #(Object, "hand_macro_phalanx", PointerProperty, {'type': HandMacroPhalanx})
     #(Object, "hand_macro_fingers", PointerProperty, {'type': HandMacroFinger}),
-    (Armature, "hand_macro_system", PointerProperty, {'type': HandMacroSystem})
-
+    (Armature, "hand_macro_system", PointerProperty, {'type': HandMacroSystem}),
+    (Armature, "hand_macro_rigify_metarig", PointerProperty, {'type': Object, 'description': "Link to the Rigify metarig"}),
+    (Armature, "hand_macro_register_actions_to_rigify_metarig", BoolProperty, {'name': "Register Actions to Metarig", 'default': False, 'description': "If true, Rigify action slots will be created on the metarig for each generated action."}),
 ]
 
 

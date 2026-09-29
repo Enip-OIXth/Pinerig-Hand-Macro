@@ -8,6 +8,7 @@ from bpy.types import Context, UIList, Panel, UILayout
 
 from . import HandMacroPhalanx, HandMacroFinger, HandMacroHand, HandMacroSystem, get_hand_macro_system, bone_exists
 from .utils import get_macro_bone_name
+from ..utils.rig import is_metarig, is_generated_rig 
 from .. import blender_version_at_least
 
 ###--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------###
@@ -126,6 +127,34 @@ def get_macro_status(context: Context, hand: "HandMacroHand") -> tuple[str, str,
         # Macro bone name is stored but the bone was deleted
         return f"Missing: {hand.macro_bone}", 'ERROR', True
 
+  
+def draw_rigify_action_slots(context: Context, layout: UILayout):
+    """
+    Draws the Rigify action slots for the metarig if it exists.
+    """
+    arm = context.object
+    arm_data = arm.data
+
+    if not is_generated_rig(arm):
+        return # Only show if this is a generated Rigify rig
+    
+    box = layout.box()
+    box.label(text="Rigify Integration", icon='ARMATURE_DATA')
+
+    if blender_version_at_least((4, 2, 0)):
+        box.separator(type='LINE')
+    else:
+        box.separator()
+
+    # Metarig link
+    box.prop(arm_data, "hand_macro_rigify_metarig", text="Metarig")
+    metarig = arm_data.hand_macro_rigify_metarig
+    
+    if is_metarig(metarig):
+        box.prop(arm_data, "hand_macro_register_actions_to_rigify_metarig",text="Register Hand Macro Actions")
+    else:
+        box.label(text="Select the metarig to enable action registration", icon='INFO')
+
 
 def draw_macro(context: Context, layout: UILayout, hand: "HandMacroHand"):
     """
@@ -141,15 +170,15 @@ def draw_macro(context: Context, layout: UILayout, hand: "HandMacroHand"):
     else:
         box.separator()
 
-
     row = box.row(align=True)
     if use_alert:
         row.alert = True
 
     row.label(text=status_text, icon=status_icon)
     row.operator("hand_macro.delete_macro", icon="X")
-
     row.alert = False
+
+    draw_rigify_action_slots(context, box)
 
 
 ###--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------###

@@ -6,9 +6,8 @@
 
 import bpy
 from math import radians as deg2rad
-from math import acos
 from typing import Optional
-from mathutils import Vector, Euler
+from mathutils import Vector
 from bpy.types import Object, Action, PoseBone, Armature
 
 from .. import blender_version_at_least
@@ -19,105 +18,107 @@ from ..utils.animation import ensure_anim_data
 from ..utils.bones import copy_bone, get_bone, put_bone, align_bone_x_axis, set_bone_parent, copy_bone_color
 from ..utils.mechanism import make_constraint, make_driver, driver_var_transform, refresh_drivers
 from ..utils.naming import get_name_side, Side, change_name_side
+from ..utils.rig import is_generated_rig, is_metarig
 from ..utils.widgets import create_widget
-
+from ..utils.rigify_actions import register_rigify_metarig_action_slot
+from ..utils.misc import ArmatureObject
 
 ###--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------###
 
 
 MACRO_NAME = 'hand_macro'
-MACRO_WIDGET = '''
-geom.verts = [
-    (0.0, 0.3285, 0.3239),
-    (0.0, 0.3285, -0.3332),
-    (0.0, -0.3285, 0.3239),
-    (0.0, -0.3285, -0.3332),
-    (0.0, 0.1792, -0.363),
-    (0.0, 0.0, -0.363),
-    (0.0, -0.1792, -0.363),
-    (0.0, 0.3584, 0.1745),
-    (0.0, 0.3584, -0.0047),
-    (0.0, 0.3584, -0.1839),
-    (0.0, 0.1792, 0.3537),
-    (0.0, 0.0, 0.3537),
-    (0.0, -0.1792, 0.3537),
-    (0.0, -0.3584, 0.1745),
-    (0.0, -0.3584, -0.0047),
-    (0.0, -0.3584, -0.1839),
-    (0.0, -0.2235, -0.3626),
-    (0.0, -0.2651, -0.3593),
-    (0.0, -0.301, -0.3504),
-    (0.0, 0.3579, -0.2282),
-    (0.0, 0.3547, -0.2697),
-    (0.0, 0.3458, -0.3056),
-    (0.0, -0.2235, 0.3533),
-    (0.0, -0.2651, 0.35),
-    (0.0, -0.301, 0.3411),
-    (0.0, -0.3579, -0.2282),
-    (0.0, -0.3547, -0.2697),
-    (0.0, -0.3458, -0.3056),
-    (0.0, 0.301, -0.3504),
-    (0.0, 0.2651, -0.3593),
-    (0.0, 0.2235, -0.3626),
-    (0.0, 0.0896, -0.363),
-    (0.0, -0.0896, -0.363),
-    (0.0, 0.3458, 0.2963),
-    (0.0, 0.3547, 0.2604),
-    (0.0, 0.3579, 0.2189),
-    (0.0, 0.3584, 0.0849),
-    (0.0, 0.3584, -0.0943),
-    (0.0, 0.301, 0.3411),
-    (0.0, 0.2651, 0.35),
-    (0.0, 0.2235, 0.3533),
-    (0.0, 0.0896, 0.3537),
-    (0.0, -0.0896, 0.3537),
-    (0.0, -0.3458, 0.2963),
-    (0.0, -0.3547, 0.2604),
-    (0.0, -0.3579, 0.2189),
-    (0.0, -0.3584, 0.0849),
-    (0.0, -0.3584, -0.0943),
-    (0.0, 0.0, 0.3537),
-    (0.0, 0.0, 0.6174),
-    (0.0, 0.4306, 0.0123),
-    (0.0, 0.4306, -0.0216),
-    (0.0, 0.556, -0.0556),
-    (0.0, -0.0509, 0.5513),
-    (0.0, 0.0509, 0.5513),
-    (0.0, 0.556, 0.0463),
-    (0.0, 0.6221, -0.0047),
-    (0.0, 0.017, 0.426),
-    (0.0, -0.017, 0.426),
-    (0.0, -0.017, 0.5513),
-    (0.0, 0.017, 0.5513),
-    (0.0, 0.556, 0.0123),
-    (0.0, 0.556, -0.0216),
-    (0.0, 0.017, -0.4353),
-    (0.0, -0.017, -0.4353),
-    (0.0, -0.0509, -0.5606),
-    (0.0, 0.0509, -0.5606),
-    (0.0, 0.0, -0.6267),
-    (0.0, 0.017, -0.5606),
-    (0.0, -0.017, -0.5606),
-    (0.0, -0.4306, -0.0216),
-    (0.0, -0.4306, 0.0123),
-    (0.0, -0.556, 0.0463),
-    (0.0, -0.556, -0.0556),
-    (0.0, -0.6221, -0.0047),
-    (0.0, -0.556, -0.0216),
-    (0.0, -0.556, 0.0123),
-]
-geom.edges = [
-    (6, 16), (16, 17), (17, 18), (3, 18), (9, 19), (19, 20), (20, 21), (1, 21), (12, 22), (22, 23),
-    (23, 24), (2, 24), (15, 25), (25, 26), (26, 27), (3, 27), (1, 28), (28, 29), (29, 30), (4, 30),
-    (4, 31), (5, 31), (5, 32), (6, 32), (0, 33), (33, 34), (34, 35), (7, 35), (7, 36), (8, 36),
-    (8, 37), (9, 37), (0, 38), (38, 39), (39, 40), (10, 40), (10, 41), (11, 41), (11, 42), (12, 42),
-    (2, 43), (43, 44), (44, 45), (13, 45), (13, 46), (14, 46), (14, 47), (15, 47), (65, 69), (63, 68),
-    (66, 67), (55, 56), (52, 62), (49, 54), (54, 60), (50, 61), (51, 62), (49, 53), (57, 58), (53, 59),
-    (52, 56), (57, 60), (58, 59), (55, 61), (50, 51), (64, 69), (65, 67), (66, 68), (63, 64), (72, 76),
-    (70, 75), (73, 74), (71, 76), (72, 74), (73, 75), (70, 71),
-]
-geom.faces = []
-'''
+MACRO_WIDGET = {
+    "verts" : [
+        (0.0, 0.3285, 0.3239),
+        (0.0, 0.3285, -0.3332),
+        (0.0, -0.3285, 0.3239),
+        (0.0, -0.3285, -0.3332),
+        (0.0, 0.1792, -0.363),
+        (0.0, 0.0, -0.363),
+        (0.0, -0.1792, -0.363),
+        (0.0, 0.3584, 0.1745),
+        (0.0, 0.3584, -0.0047),
+        (0.0, 0.3584, -0.1839),
+        (0.0, 0.1792, 0.3537),
+        (0.0, 0.0, 0.3537),
+        (0.0, -0.1792, 0.3537),
+        (0.0, -0.3584, 0.1745),
+        (0.0, -0.3584, -0.0047),
+        (0.0, -0.3584, -0.1839),
+        (0.0, -0.2235, -0.3626),
+        (0.0, -0.2651, -0.3593),
+        (0.0, -0.301, -0.3504),
+        (0.0, 0.3579, -0.2282),
+        (0.0, 0.3547, -0.2697),
+        (0.0, 0.3458, -0.3056),
+        (0.0, -0.2235, 0.3533),
+        (0.0, -0.2651, 0.35),
+        (0.0, -0.301, 0.3411),
+        (0.0, -0.3579, -0.2282),
+        (0.0, -0.3547, -0.2697),
+        (0.0, -0.3458, -0.3056),
+        (0.0, 0.301, -0.3504),
+        (0.0, 0.2651, -0.3593),
+        (0.0, 0.2235, -0.3626),
+        (0.0, 0.0896, -0.363),
+        (0.0, -0.0896, -0.363),
+        (0.0, 0.3458, 0.2963),
+        (0.0, 0.3547, 0.2604),
+        (0.0, 0.3579, 0.2189),
+        (0.0, 0.3584, 0.0849),
+        (0.0, 0.3584, -0.0943),
+        (0.0, 0.301, 0.3411),
+        (0.0, 0.2651, 0.35),
+        (0.0, 0.2235, 0.3533),
+        (0.0, 0.0896, 0.3537),
+        (0.0, -0.0896, 0.3537),
+        (0.0, -0.3458, 0.2963),
+        (0.0, -0.3547, 0.2604),
+        (0.0, -0.3579, 0.2189),
+        (0.0, -0.3584, 0.0849),
+        (0.0, -0.3584, -0.0943),
+        (0.0, 0.0, 0.3537),
+        (0.0, 0.0, 0.6174),
+        (0.0, 0.4306, 0.0123),
+        (0.0, 0.4306, -0.0216),
+        (0.0, 0.556, -0.0556),
+        (0.0, -0.0509, 0.5513),
+        (0.0, 0.0509, 0.5513),
+        (0.0, 0.556, 0.0463),
+        (0.0, 0.6221, -0.0047),
+        (0.0, 0.017, 0.426),
+        (0.0, -0.017, 0.426),
+        (0.0, -0.017, 0.5513),
+        (0.0, 0.017, 0.5513),
+        (0.0, 0.556, 0.0123),
+        (0.0, 0.556, -0.0216),
+        (0.0, 0.017, -0.4353),
+        (0.0, -0.017, -0.4353),
+        (0.0, -0.0509, -0.5606),
+        (0.0, 0.0509, -0.5606),
+        (0.0, 0.0, -0.6267),
+        (0.0, 0.017, -0.5606),
+        (0.0, -0.017, -0.5606),
+        (0.0, -0.4306, -0.0216),
+        (0.0, -0.4306, 0.0123),
+        (0.0, -0.556, 0.0463),
+        (0.0, -0.556, -0.0556),
+        (0.0, -0.6221, -0.0047),
+        (0.0, -0.556, -0.0216),
+        (0.0, -0.556, 0.0123),
+    ],
+    "edges" : [
+        (6, 16), (16, 17), (17, 18), (3, 18), (9, 19), (19, 20), (20, 21), (1, 21), (12, 22), (22, 23),
+        (23, 24), (2, 24), (15, 25), (25, 26), (26, 27), (3, 27), (1, 28), (28, 29), (29, 30), (4, 30),
+        (4, 31), (5, 31), (5, 32), (6, 32), (0, 33), (33, 34), (34, 35), (7, 35), (7, 36), (8, 36),
+        (8, 37), (9, 37), (0, 38), (38, 39), (39, 40), (10, 40), (10, 41), (11, 41), (11, 42), (12, 42),
+        (2, 43), (43, 44), (44, 45), (13, 45), (13, 46), (14, 46), (14, 47), (15, 47), (65, 69), (63, 68),
+        (66, 67), (55, 56), (52, 62), (49, 54), (54, 60), (50, 61), (51, 62), (49, 53), (57, 58), (53, 59),
+        (52, 56), (57, 60), (58, 59), (55, 61), (50, 51), (64, 69), (65, 67), (66, 68), (63, 64), (72, 76),
+        (70, 75), (73, 74), (71, 76), (72, 74), (73, 75), (70, 71),
+    ],
+    "faces" : [],
+}
 
 # Each entry: (display_name, transform_channel_id)
 # The transform_channel_id is the key into ACTION_TRANSFORM_MAP.
@@ -144,6 +145,7 @@ ACTION_TRANSFORM_MAP = {
     'ROT_Y':            ('ROT_Y',   'LOCAL', 'max(0.0, min(1.0, var / 0.7854))'),
     'ROT_NEGATIVE_Y':   ('ROT_Y',   'LOCAL', 'max(0.0, min(1.0, -var / 0.7854))'),
 }
+
 
 FK_HINTS    = ["fk", "ctrl", "ctl"]
 FK_PREFIXES = ["c_", "f_", "fk_", "ctrl_"]
@@ -223,15 +225,15 @@ def build_finger_chain(hand: "HandMacroHand"):
 ##############################################
 
 
-def is_arp_rig(arm_obj: Armature) -> bool:
+def is_arp_rig(arm_obj: ArmatureObject) -> bool:
     return hasattr(arm_obj.data, '["has_match_to_rig"]')
 
 
-def is_rigify_rig(arm_obj: Armature) -> bool:
-    return hasattr(arm_obj.data, '["rig_id"]')
+def is_rigify_rig(arm_obj: ArmatureObject) -> bool:
+    return is_generated_rig(arm_obj)
 
 
-def resolve_hand_root(obj: Armature, selected_name: str) -> str:
+def resolve_hand_root(obj: ArmatureObject, selected_name: str) -> str:
     """
     Given the bone the user has active (usually a hand control),
     return the bone whose subtree should be searched for FK finger chains.
@@ -325,7 +327,7 @@ def get_macro_bone_name(hand: str, side: str = '') -> str:
 ##############################################
 
 
-def _assign_action_for_keying(arm_obj: Armature, action: Action):
+def _assign_action_for_keying(arm_obj: ArmatureObject, action: Action):
     """
     Assign action to armature animation data, handling Blender 5.0+ action slots.
     """
@@ -337,15 +339,21 @@ def _assign_action_for_keying(arm_obj: Armature, action: Action):
             anim_data.action_slot = suitable[0]
 
 
-def _clear_action_constraints(arm_obj: Armature, finger_chains: dict, action: Action):
+def _clear_action_constraints(arm_obj: ArmatureObject, finger_chains: dict, action: Action):
     """
     Remove all ACTION constraints on every finger bone that reference the given action.
     Called before re-adding to allow non-destructive regeneration.
+
+    Skip if the action is protected by Fake User.
     """
     for bone_list in finger_chains.values():
         for entry in bone_list:
             pb = arm_obj.pose.bones[entry] if isinstance(entry, str) else entry
             for con in list(pb.constraints):
+
+                if action.use_fake_user:
+                    continue  # Skip protected actions
+
                 if con.type == 'ACTION' and con.action == action:
                     pb.constraints.remove(con)
 
@@ -363,7 +371,7 @@ class _Geom:
     faces: list
 
 
-def get_or_create_macro_widget(arm_obj: Object, bone_name: str, widget_force_new=True) -> Object:
+def get_or_create_macro_widget(arm_obj: ArmatureObject, bone_name: str, widget_force_new=True) -> Object:
     """
     Get-or-create the hand macro widget and assign it to `bone_name`.
 
@@ -382,10 +390,8 @@ def get_or_create_macro_widget(arm_obj: Object, bone_name: str, widget_force_new
         return arm_obj.pose.bones[bone_name].custom_shape
 
     # Parse the geometry string into a _Geom instance.
-    geom = _Geom()
-    exec(MACRO_WIDGET, {'geom': geom})  # noqa: S102 — trusted internal constant
-
-    obj.data.from_pydata(geom.verts, geom.edges, geom.faces)
+    data = MACRO_WIDGET
+    obj.data.from_pydata(data["verts"], data["edges"], data["faces"])
     obj.data.update()
 
     pb = arm_obj.pose.bones[bone_name]
@@ -401,7 +407,7 @@ def get_or_create_macro_widget(arm_obj: Object, bone_name: str, widget_force_new
 ##############################################
 
 
-def create_macro_bone(arm_obj: Armature, hand: str, side: str = '') -> str:
+def create_macro_bone(arm_obj: ArmatureObject, hand: str, side: str = '') -> str:
     """
     Creates the macro control bone above the hand bone.
 
@@ -428,8 +434,16 @@ def create_macro_bone(arm_obj: Armature, hand: str, side: str = '') -> str:
         get_or_create_macro_widget(arm_obj, macro_name)
         return macro_name
 
-    # ── EDIT mode: create bone geometry ─────────────────────────────────────
-    bpy.ops.object.mode_set(mode='EDIT')
+    # ── EDIT mode ───────────────────────────────────────────────────────────
+    for obj in bpy.context.view_layer.objects:
+        obj.select_set(False)
+    arm_obj.select_set(True)
+    bpy.context.view_layer.objects.active = arm_obj
+
+    # mode_set polls for active_object in context — pass it explicitly
+    # because temp_override from the operator may not carry it through.
+    with bpy.context.temp_override(active_object=arm_obj, object=arm_obj):
+        bpy.ops.object.mode_set(mode='EDIT')
 
     macro = copy_bone(arm_obj, hand, macro_name, parent=False)
 
@@ -654,7 +668,7 @@ def _spatial_finger_fallback(
 ##############################################
 
 
-def find_fk_finger_controls(arm_obj: Armature, hand: str, side: str = '') -> dict[str, list[PoseBone]]:
+def find_fk_finger_controls(arm_obj: ArmatureObject, hand: str, side: str = '') -> dict[str, list[PoseBone]]:
     """
     Discover FK finger chains anywhere in the subtree of `hand`.
 
@@ -776,7 +790,7 @@ def _get_finger_value(chain_name: str, value_dict: dict, default=0.0, extra_fact
 
 def keyframe_procedural_hand_poses(
     action: Action, 
-    arm_obj: Armature,
+    arm_obj: ArmatureObject,
     action_type: str,
     finger_chains: dict[str, list],
     side: str = '',
@@ -786,7 +800,15 @@ def keyframe_procedural_hand_poses(
       - Multiple thumbs
       - No thumbs
       - Extra fingers (values interpolated from pinky)
+
+    Skips keyframing if the action has a fake user (protected).
     """
+
+    if action.use_fake_user:
+        print(f"[HandMacro] Skipping procedural generation for protected action: {action.name}")
+        return
+
+
     _assign_action_for_keying(arm_obj, action)
 
     system = get_hand_macro_system(arm_obj.data)
@@ -870,6 +892,13 @@ def keyframe_procedural_hand_poses(
                 pb.location = (0, 0, 0)
                 pb.rotation_euler = (0, 0, 0)
                 pb.scale = (1, 1, 1)
+    
+    # --- Force linear interpolation on all generated keyframes ---
+    for fcu in action.fcurves:
+        # Only touch actual animation curves, not drivers or metadata
+        if fcu.data_path.startswith("pose.bones"):
+            for kp in fcu.keyframe_points:
+                kp.interpolation = 'LINEAR'
 
     arm_obj.animation_data.action = None
 
@@ -881,7 +910,7 @@ def keyframe_procedural_hand_poses(
 
 
 def create_finger_action_constraint(
-        arm_obj: Armature, action: Action,
+        arm_obj: ArmatureObject, action: Action,
         finger_chains: dict[str, list],
         transform_type: str, macro: str,
         action_type: str,
@@ -929,6 +958,193 @@ def create_finger_action_constraint(
                 expression=expression,
                 variables={'var': var_spec},
             )
+ 
+
+###--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------###
+##############################################
+# Rigify Metarig
+##############################################
+
+
+def register_macro_action_to_metarig(
+    metarig: ArmatureObject,
+    action: Action,
+    macro_bone: str,
+    transform_id: str,
+):
+    """
+    Register ONE macro action to the Rigify metarig.
+    transform_id must be one of the keys in ACTION_TRANSFORM_MAP.
+    """
+
+    if not metarig or not hasattr(metarig.data, "rigify_action_slots"):
+        print("[HandMacro] No valid Rigify metarig found.")
+        return None
+
+    # Extract transform info
+    driver_type, space, _expr = ACTION_TRANSFORM_MAP[transform_id]
+    transform_channel = driver_type
+
+    # Compute min/max from transform type
+    if driver_type == "LOC_Y":
+        trans_min, trans_max = (0.0, -0.05) if "NEGATIVE" in transform_id else (0.0, 0.05)
+
+    elif driver_type == "ROT_Y":
+        trans_min, trans_max = (0.0, -45) if "NEGATIVE" in transform_id else (0.0, 45)
+
+    elif driver_type == "SCALE_Z":
+        trans_min, trans_max = (1.0, 0.5) if "NEGATIVE" in transform_id else (1.0, 1.5)
+
+    else:
+        print(f"[HandMacro] Unknown transform type for {transform_id}")
+        return None
+
+    # Register the slot
+    return register_rigify_metarig_action_slot(
+        metarig,
+        action=action,
+        control_bone=macro_bone,
+        transform_channel=transform_channel,
+        frame_start=0,
+        frame_end=10,
+        trans_min=trans_min,
+        trans_max=trans_max,
+        symmetrical=True,
+    )
+
+
+def create_macro_bone_on_metarig(
+    metarig_obj: ArmatureObject,
+    arm_obj: ArmatureObject,
+    hand_root_name: str,
+    macro_bone_name: str,
+) -> str | None:
+    """
+    Copies the fully-configured macro bone from the generated rig into the metarig.
+    Preserves widgets, constraints, transform locks, colors, and custom shape wire width.
+    """
+    if not is_metarig(metarig_obj):
+        print("[HandMacro] No valid metarig object.")
+        return None
+
+    if macro_bone_name in metarig_obj.data.bones:
+        print(f"[HandMacro] Macro bone '{macro_bone_name}' already exists.")
+        return macro_bone_name
+
+    if arm_obj is None:
+        return None
+
+    # ── 2. Duplicate only that bone into a temp armature ────────────────────
+    with bpy.context.temp_override(active_object=arm_obj, object=arm_obj):
+        bpy.ops.object.mode_set(mode='POSE')
+
+    # Deselect all pose bones, then select only our macro bone
+    for pb in arm_obj.pose.bones:
+        pb.bone.select = False
+    arm_obj.pose.bones[macro_bone_name].bone.select = True
+    arm_obj.data.bones.active = arm_obj.data.bones[macro_bone_name]
+
+    with bpy.context.temp_override(active_object=arm_obj, object=arm_obj):
+        bpy.ops.object.mode_set(mode='EDIT')
+
+    for eb in arm_obj.data.edit_bones:
+        eb.select = False
+        eb.select_head = False
+        eb.select_tail = False
+
+    eb_macro = arm_obj.data.edit_bones.get(macro_bone_name)
+    if eb_macro is None:
+        with bpy.context.temp_override(active_object=arm_obj, object=arm_obj):
+            bpy.ops.object.mode_set(mode='OBJECT')
+        print(f"[HandMacro] Edit bone '{macro_bone_name}' not found in generated rig.")
+        return None
+
+    eb_macro.select = True
+    eb_macro.select_head = True
+    eb_macro.select_tail = True
+    arm_obj.data.edit_bones.active = eb_macro
+
+    # Duplicate selected bone → becomes a new loose bone in generated rig edit mode
+    with bpy.context.temp_override(active_object=arm_obj, object=arm_obj):
+        bpy.ops.armature.duplicate()
+        # Clear parent so it joins cleanly with no hierarchy dependency
+        bpy.ops.armature.parent_clear(type='DISCONNECT')
+
+    # The duplicated bone is now active/selected; grab its name
+    dup_eb = arm_obj.data.edit_bones.active
+    dup_name = dup_eb.name  # e.g. "MCH-Hand_Macro.L.001"
+
+    with bpy.context.temp_override(active_object=arm_obj, object=arm_obj):
+        bpy.ops.object.mode_set(mode='OBJECT')
+
+    # ── 3. Separate the duplicated bone into its own temp armature ──────────
+    with bpy.context.temp_override(active_object=arm_obj, object=arm_obj):
+        bpy.ops.object.mode_set(mode='EDIT')
+
+    for eb in arm_obj.data.edit_bones:
+        eb.select = eb.name == dup_name
+        eb.select_head = eb.name == dup_name
+        eb.select_tail = eb.name == dup_name
+
+    with bpy.context.temp_override(active_object=arm_obj, object=arm_obj):
+        bpy.ops.armature.separate()
+
+    # After separate, the new object is active and selected
+    temp_arm_obj = bpy.context.selected_objects[-1]
+
+    # Rename the bone inside the temp armature to the canonical macro name
+    with bpy.context.temp_override(active_object=temp_arm_obj, object=temp_arm_obj):
+        bpy.ops.object.mode_set(mode='EDIT')
+
+    eb = get_bone(temp_arm_obj, dup_name)
+    eb.name = macro_bone_name
+
+    with bpy.context.temp_override(active_object=temp_arm_obj, object=temp_arm_obj):
+        bpy.ops.object.mode_set(mode='OBJECT')
+    
+    pb = get_bone(temp_arm_obj, macro_bone_name)
+    pb.rigify_type = "basic.raw_copy"
+
+    # ── 4. Join the temp armature into the metarig ──────────────────────────
+    for obj in bpy.context.view_layer.objects:
+        obj.select_set(False)
+
+    temp_arm_obj.select_set(True)
+    metarig_obj.select_set(True)
+    bpy.context.view_layer.objects.active = metarig_obj
+
+    with bpy.context.temp_override(
+        active_object=metarig_obj,
+        object=metarig_obj,
+        selected_objects=[temp_arm_obj, metarig_obj],
+        selected_editable_objects=[temp_arm_obj, metarig_obj],
+    ):
+        bpy.ops.object.join()
+
+    # ── 5. Fix up the bone in the metarig ───────────────────────────────────
+    # Re-parent to hand_root in metarig edit mode
+    with bpy.context.temp_override(active_object=metarig_obj, object=metarig_obj):
+        bpy.ops.object.mode_set(mode='EDIT')
+
+    ebs = metarig_obj.data.edit_bones
+    if macro_bone_name in ebs and hand_root_name in ebs:
+        ebs[macro_bone_name].parent = ebs[hand_root_name]
+        ebs[macro_bone_name].use_connect = False
+
+    with bpy.context.temp_override(active_object=metarig_obj, object=metarig_obj):
+        bpy.ops.object.mode_set(mode='OBJECT')
+
+
+    for obj in bpy.context.view_layer.objects:
+        obj.select_set(False)
+
+    arm_obj.select_set(True)
+    bpy.context.view_layer.objects.active = arm_obj    
+
+
+    print(f"[HandMacro] Macro bone '{macro_bone_name}' copied from generated rig into metarig.")
+    return macro_bone_name
+
 
 
 ###--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------###
@@ -938,7 +1154,7 @@ def create_finger_action_constraint(
 
 
 def generate_hand_macro(
-        arm_obj: Armature,
+        arm_obj: ArmatureObject,
         hand_root_bone: str,
         finger_chains: dict[str, list],
         side: str = '',
@@ -949,10 +1165,14 @@ def generate_hand_macro(
     Actions are shared only if use_shared_actions=True.
     """
 
+    arm_data = arm_obj.data
+    metarig = arm_data.hand_macro_rigify_metarig
     side = side or detect_bone_side(hand_root_bone)
 
     # Create macro bone for this hand
     macro_name = create_macro_bone(arm_obj, hand_root_bone, side)
+    if metarig:
+        create_macro_bone_on_metarig(metarig, arm_obj, hand_root_bone, macro_name)
 
     for action_type, transform_type in ACTION_TYPES:
         # Decide action name
@@ -974,6 +1194,9 @@ def generate_hand_macro(
             arm_obj, action, finger_chains, transform_type, macro_name,
             action_type, side
         )
+
+        if metarig and arm_data.hand_macro_register_actions_to_rigify_metarig:
+            register_macro_action_to_metarig(metarig, action, macro_name, transform_type)
 
     # Final rest pose + refresh
     if macro_name in arm_obj.pose.bones:

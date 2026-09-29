@@ -117,9 +117,6 @@ def reload_submodules():
     for name in sorted(modules, key=lambda n: n.count("."), reverse=False):
         try:
             mod = importlib.reload(sys.modules[name])
-            #print(f"[Pinerig] Reloaded: {name}")
-            #if hasattr(mod, "reload"):
-                #mod.reload()
         except Exception as e:
             print(f"[Pinerig] Failed to reload {name}: {e}")
 

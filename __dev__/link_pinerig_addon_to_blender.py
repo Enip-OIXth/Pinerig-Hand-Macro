@@ -22,7 +22,7 @@ import re
 
 # ---------------------------------------------------------------------
 # User config
-BLENDER_VERSIONS = ["4.2", "4.3", "4.4", "4.5", "5.0"]
+BLENDER_VERSIONS = ["4.5"]
 FORCE_REPLACE = True  # Set False to skip if the link already exists.
 UNINSTALL = False # Set to True to remove links and uninstall addons.
 # ---------------------------------------------------------------------
